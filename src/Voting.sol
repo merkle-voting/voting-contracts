@@ -13,6 +13,16 @@ contract Voting {
         uint40 duration;
         uint40 endTime;
         mapping(string => uint256) votePerCandidate;
+        bytes merkleRoot;
+    }
+
+    struct ElectionM {
+        string title;
+        string[] candidates;
+        uint40 timeStarted;
+        uint40 duration;
+        uint40 endTime;
+        bytes merkleRoot;
     }
     mapping(uint256 => Election) elections;
     //admin whitelists
@@ -20,6 +30,7 @@ contract Voting {
     address owner;
 
     event ElectionCreated(string[] candidates, string title, uint40 endTime);
+    event Voted(address voter, uint256 electionId, string candidate);
 
     constructor() {
         owner = (msg.sender);
@@ -31,6 +42,7 @@ contract Voting {
 
     function _canVote() private view {
         if (!canVote[msg.sender]) revert("Unable To Vote");
+        //verify merkleRoot with voter's info hash
     }
 
     function assertTime(uint40 _startTime, uint40 _duration) private view {
@@ -45,7 +57,8 @@ contract Voting {
         string[] calldata _candidates,
         uint40 _startTime,
         uint40 _duration,
-        string calldata _title
+        string calldata _title,
+        bytes memory _merkleRoot
     ) external {
         _isOwner();
         if (_candidates.length > 5) revert("max candidate length is 5");
@@ -56,13 +69,37 @@ contract Voting {
         e.duration = _duration;
         e.timeStarted = _startTime;
         e.endTime = _startTime + _duration;
+        e.merkleRoot = _merkleRoot;
         emit ElectionCreated(_candidates, _title, e.endTime);
     }
 
+    function whitelistVoters(address[] calldata _voters) external {
+        _isOwner();
+        for (uint256 i = 0; i < _voters.length; ) {
+            canVote[_voters[i]] = true;
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+//_data[i] should be a hash of vote details e.g consisting of candidate name and voter detail hash
     function submitVotes(
         bytes[] calldata _sigs,
         bytes32[] calldata _data
-    ) external {}
-}
+    ) external {
+        assert(_sigs.length==_data.length)
+    }
 
-h
+    function viewElection(
+        uint256 _id
+    ) public view returns (ElectionM memory e_) {
+        Election storage e = elections[_id];
+        e_.candidates = e.candidates;
+        e_.title = e.title;
+        e_.timeStarted = e.timeStarted;
+        e_.duration = e.duration;
+        e_.endTime = e.endTime;
+        e_.merkleRoot = e.merkleRoot;
+    }
+}
