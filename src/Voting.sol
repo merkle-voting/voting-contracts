@@ -8,7 +8,7 @@ contract Voting {
 
     struct Election {
         string title;
-        string[] candidates;
+        uint256[] candidates;
         uint40 timeStarted;
         uint40 duration;
         uint40 endTime;
@@ -16,9 +16,16 @@ contract Voting {
         bytes merkleRoot;
     }
 
+    struct VoteData {
+        bytes signature;
+        uint256 candidateId;
+        address voter;
+        bytes32 voterHash;
+    }
+
     struct ElectionM {
         string title;
-        string[] candidates;
+        uint256[] candidates;
         uint40 timeStarted;
         uint40 duration;
         uint40 endTime;
@@ -29,7 +36,7 @@ contract Voting {
     mapping(address => bool) canVote;
     address owner;
 
-    event ElectionCreated(string[] candidates, string title, uint40 endTime);
+    event ElectionCreated(uint256[] candidates, string title, uint40 endTime);
     event Voted(address voter, uint256 electionId, string candidate);
 
     constructor() {
@@ -43,6 +50,7 @@ contract Voting {
     function _canVote() private view {
         if (!canVote[msg.sender]) revert("Unable To Vote");
         //verify merkleRoot with voter's info hash
+        
     }
 
     function assertTime(uint40 _startTime, uint40 _duration) private view {
@@ -54,7 +62,7 @@ contract Voting {
     }
 
     function createElection(
-        string[] calldata _candidates,
+        uint256[] calldata _candidates,
         uint40 _startTime,
         uint40 _duration,
         string calldata _title,
@@ -83,12 +91,12 @@ contract Voting {
         }
     }
 
-//_data[i] should be a hash of vote details e.g consisting of candidate name and voter detail hash
-    function submitVotes(
-        bytes[] calldata _sigs,
-        bytes32[] calldata _data
-    ) external {
-        assert(_sigs.length==_data.length)
+    //_data[i] should be a hash of vote details e.g consisting of candidate id and voter detail hash
+    function submitVotes(VoteData[] calldata _data) external {
+        //assert(_sigs.length == _data.length);
+        if(_data.length>0){
+
+        }
     }
 
     function viewElection(
