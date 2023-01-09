@@ -37,7 +37,7 @@ contract Voting {
     }
     mapping(uint256 => Election) elections;
     //admin whitelists
-    mapping(address => mapping(uint256 => bool)) canVote;
+    mapping(address => mapping(uint256 => bool)) voted;
     address owner;
 
     event ElectionCreated(uint256[] candidates, string title, uint40 endTime);
@@ -69,14 +69,15 @@ contract Voting {
             revert("InvalidVoter");
     }
 
-    function _canVote(address _voter, uint256 _electionId) private view {
-        if (!canVote[_voter][_electionId]) revert("Unable To Vote");
+    function _voted(address _voter, uint256 _electionId) private view {
+        if (voted[_voter][_electionId]) revert("Unable To Vote");
     }
 
     function _assertTime(uint40 _startTime, uint40 _duration) private view {
         if (_startTime < block.timestamp) revert("StartTimeTooLow");
+        if (_duration > 1 days) revert("1 Day duration Max");
         uint40 _endTime = _startTime + _duration;
-        if (_endTime >= _startTime) revert("EndTimeTooLow");
+        if (_endTime <= _startTime) revert("EndTimeTooLow");
         if (_duration < 3 hours) revert("3 hours duration Min");
         //put in a check for startTime restriction
         if (_endTime > 3 days) revert("3 Days Duration Max ");
@@ -85,10 +86,11 @@ contract Voting {
     function _assertElection(
         uint256 _electionId
     ) private view returns (bytes32 root_) {
-        if (_electionId > electionId) revert("InvalidElectionID");
-        if (elections[_electionId].endTime > block.timestamp)
+        if (_electionId >= electionId) revert("InvalidElectionID");
+        if (elections[_electionId].endTime < block.timestamp)
             revert("ElectionFinished");
         root_ = elections[_electionId].merkleRoot;
+
         if (!elections[_electionId].active) revert("InactiveElection");
     }
 
@@ -125,7 +127,7 @@ contract Voting {
     // function whitelistVoters(address[] calldata _voters) external {
     //     _isOwner();
     //     for (uint256 i = 0; i < _voters.length; ) {
-    //         canVote[_voters[i]] = true;
+    //         voted[_voters[i]] = true;
     //         unchecked {
     //             ++i;
     //         }
@@ -142,7 +144,7 @@ contract Voting {
             for (uint256 i = 0; i < _data.length; ) {
                 VoteData memory data = _data[i];
                 //check voter eligibility
-                _canVote(data.voter, _electionId);
+                _voted(data.voter, _electionId);
                 _isVoter(
                     data.voter,
                     data.voterHash,
@@ -150,10 +152,17 @@ contract Voting {
                     _electionId
                 );
                 Election storage e = elections[_electionId];
+                //check sig
+                bytes32 mHash = LibSignature.getMessageHash(
+                    data.voter,
+                    _electionId,
+                    data.candidateId
+                );
+                mHash = LibSignature.getEthSignedMessageHash(mHash);
+                LibSignature.isValid(mHash, data.signature, data.voter);
                 if (_data[i].candidateId > e.maxCandidateNo - 1)
                     revert("NoSuchCandidate");
                 //increase vote count for candidate
-
                 e.votePerCandidate[data.candidateId]++;
                 emit Voted(data.voter, _electionId, data.candidateId);
                 unchecked {
