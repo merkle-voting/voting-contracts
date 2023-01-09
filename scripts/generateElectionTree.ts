@@ -16,7 +16,7 @@ interface ElectionData {
 
 const csvfile = path.join(__dirname, "userdata/data.csv");
 
-//generate an election tree given the election tree and id
+//generate an election tree given the election name and id
 //will store the necessary files in a folder acccording to its name
 async function generateElectionTree(
 	electionId: number,
