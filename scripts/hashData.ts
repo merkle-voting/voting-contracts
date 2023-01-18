@@ -1,9 +1,6 @@
 import csv = require("csv-parser");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 import * as fs from "fs";
-import {utils} from "ethers";
-import {Data} from "./addElectionId";
-
 //this will help calculate all user hashes given the csv containing them
 //it will write the new contents to the file itself
 async function hashData(csvFilePath: string): Promise<void> {
@@ -27,8 +24,8 @@ async function hashData(csvFilePath: string): Promise<void> {
 	// Hash the data using the Solidity keccak256 function
 	for (const row of data) {
 		row.hash = utils.solidityKeccak256(
-			["address", "uint256", "uint256"],
-			[row.address, row.NIN, row.age]
+			["address", "string", "string", "uint256", "uint256"],
+			[row.address, row.Name, row.LGA, row.NIN, row.age]
 		);
 	}
 
@@ -38,6 +35,8 @@ async function hashData(csvFilePath: string): Promise<void> {
 			path: csvFilePath,
 			header: [
 				{id: "address", title: "address"},
+				{id: "Name", title: "Name"},
+				{id: "LGA", title: "LGA"},
 				{id: "NIN", title: "NIN"},
 				{id: "age", title: "age"},
 				{id: "hash", title: "hash"},
@@ -53,3 +52,6 @@ async function hashData(csvFilePath: string): Promise<void> {
 
 hashData("scripts/userdata/data.csv");
 export {Data};
+
+import {utils} from "ethers";
+import {Data} from "./addElectionId";

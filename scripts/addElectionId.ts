@@ -6,6 +6,8 @@ import path = require("path");
 export interface Data {
 	hash?: string;
 	address: string;
+	Name: string;
+	LGA: string;
 	NIN: string;
 	age: number;
 	electionId?: number;

@@ -33,8 +33,8 @@ async function generateMerkleTree(csvFilePath: string): Promise<void> {
 	// Hash the data using the Solidity keccak256 function
 	for (const row of data) {
 		leaf = utils.solidityKeccak256(
-			["address", "uint256", "uint256", "bytes32"],
-			[row.address, row.NIN, row.age, row.hash]
+			["address", "string", "string", "uint256", "uint256", "bytes32"],
+			[row.address, row.Name, row.LGA, row.NIN, row.age, row.hash]
 		);
 		leaves.push(leaf);
 	}
