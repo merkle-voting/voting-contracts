@@ -17,6 +17,7 @@ contract Voting {
         uint8 maxCandidateNo;
         bool active;
         bytes32 merkleRoot;
+        uint256 totalVotes;
     }
 
     struct VoteData {
@@ -34,13 +35,20 @@ contract Voting {
         uint40 duration;
         uint40 endTime;
         bytes32 merkleRoot;
+        bool active;
+        uint256 totalVotes;
     }
     mapping(uint256 => Election) elections;
     //admin whitelists
     mapping(address => mapping(uint256 => bool)) voted;
     address owner;
 
-    event ElectionCreated(uint256[] candidates, string title, uint40 endTime);
+    event ElectionCreated(
+        uint256[] candidates,
+        string title,
+        uint40 endTime,
+        uint256 id
+    );
     event Voted(address voter, uint256 electionId, uint256 candidate);
 
     constructor() {
@@ -80,7 +88,7 @@ contract Voting {
         if (_endTime <= _startTime) revert("EndTimeTooLow");
         if (_duration < 3 hours) revert("3 hours duration Min");
         //put in a check for startTime restriction
-        if (_endTime > 3 days) revert("3 Days Duration Max ");
+        //   if (_endTime > 3 days) revert("3 Days Duration Max ");
     }
 
     function _assertElection(
@@ -111,7 +119,7 @@ contract Voting {
         e.timeStarted = _startTime;
         e.endTime = _startTime + _duration;
         e.maxCandidateNo = _maxCandidates;
-        emit ElectionCreated(_candidates, _title, e.endTime);
+        emit ElectionCreated(_candidates, _title, e.endTime, electionId);
         electionId++;
     }
 
@@ -123,16 +131,6 @@ contract Voting {
         elections[_electionId].merkleRoot = _merkleRoot;
         elections[_electionId].active = true;
     }
-
-    // function whitelistVoters(address[] calldata _voters) external {
-    //     _isOwner();
-    //     for (uint256 i = 0; i < _voters.length; ) {
-    //         voted[_voters[i]] = true;
-    //         unchecked {
-    //             ++i;
-    //         }
-    //     }
-    // }
 
     //_data[i] should be a hash of vote details e.g consisting of candidate id and voter detail hash
     function submitVotes(
@@ -165,6 +163,7 @@ contract Voting {
                 //increase vote count for candidate
                 e.votePerCandidate[data.candidateId]++;
                 emit Voted(data.voter, _electionId, data.candidateId);
+                e.totalVotes++;
                 unchecked {
                     ++i;
                 }
@@ -197,5 +196,7 @@ contract Voting {
         e_.duration = e.duration;
         e_.endTime = e.endTime;
         e_.merkleRoot = e.merkleRoot;
+        e_.active = e.active;
+        e_.totalVotes = e.totalVotes;
     }
 }
