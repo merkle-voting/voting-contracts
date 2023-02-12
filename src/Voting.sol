@@ -18,6 +18,7 @@ contract Voting {
         bool active;
         bytes32 merkleRoot;
         uint256 totalVotes;
+        string[] candidateNames;
     }
 
     struct VoteData {
@@ -37,6 +38,7 @@ contract Voting {
         bytes32 merkleRoot;
         bool active;
         uint256 totalVotes;
+        string[] candidateNames;
     }
     mapping(uint256 => Election) elections;
     //admin whitelists
@@ -65,7 +67,7 @@ contract Voting {
         bytes32 _voterHash,
         bytes32[] calldata _merkleProof,
         uint256 _electionId
-    ) internal view {
+    ) internal view returns (bool) {
         //short-circuit election id
         bytes32 root = _assertElection(_electionId);
         //compute the leaf/node hash
@@ -73,12 +75,14 @@ contract Voting {
             abi.encodePacked(_voter, _voterHash, _electionId)
         );
 
-        if (!MerkleProofLib.verify(_merkleProof, root, node))
-            revert("InvalidVoter");
+        return (MerkleProofLib.verify(_merkleProof, root, node));
     }
 
-    function _voted(address _voter, uint256 _electionId) private view {
-        if (voted[_voter][_electionId]) revert("Unable To Vote");
+    function _voted(
+        address _voter,
+        uint256 _electionId
+    ) public view returns (bool) {
+        return (voted[_voter][_electionId]);
     }
 
     function _assertTime(uint40 _startTime, uint40 _duration) private view {
@@ -107,7 +111,8 @@ contract Voting {
         uint40 _startTime,
         uint40 _duration,
         string calldata _title,
-        uint8 _maxCandidates
+        uint8 _maxCandidates,
+        string[] memory _candidateNames
     ) external {
         _isOwner();
         if (_candidates.length > 5) revert("max candidate length is 5");
@@ -119,6 +124,7 @@ contract Voting {
         e.timeStarted = _startTime;
         e.endTime = _startTime + _duration;
         e.maxCandidateNo = _maxCandidates;
+        e.candidateNames = _candidateNames;
         emit ElectionCreated(_candidates, _title, e.endTime, electionId);
         electionId++;
     }
@@ -141,29 +147,35 @@ contract Voting {
         if (_data.length > 0) {
             for (uint256 i = 0; i < _data.length; ) {
                 VoteData memory data = _data[i];
-                //check voter eligibility
-                _voted(data.voter, _electionId);
-                _isVoter(
-                    data.voter,
-                    data.voterHash,
-                    _data[i].proof,
-                    _electionId
-                );
-                Election storage e = elections[_electionId];
-                //check sig
-                bytes32 mHash = LibSignature.getMessageHash(
-                    data.voter,
-                    _electionId,
-                    data.candidateId
-                );
-                mHash = LibSignature.getEthSignedMessageHash(mHash);
-                LibSignature.isValid(mHash, data.signature, data.voter);
-                if (_data[i].candidateId > e.maxCandidateNo - 1)
-                    revert("NoSuchCandidate");
-                //increase vote count for candidate
-                e.votePerCandidate[data.candidateId]++;
-                emit Voted(data.voter, _electionId, data.candidateId);
-                e.totalVotes++;
+
+                {
+                    Election storage e = elections[_electionId];
+                    //check sig
+                    bytes32 mHash = LibSignature.getMessageHash(
+                        data.voter,
+                        _electionId,
+                        data.candidateId
+                    );
+                    mHash = LibSignature.getEthSignedMessageHash(mHash);
+                    if (
+                        LibSignature.isValid(mHash, data.signature, data.voter)
+                    ) {
+                        if (_data[i].candidateId <= e.maxCandidateNo - 1) {
+                            if (!_voted(data.voter, _electionId)) {
+                                //increase vote count for candidate
+                                e.votePerCandidate[data.candidateId]++;
+                                emit Voted(
+                                    data.voter,
+                                    _electionId,
+                                    data.candidateId
+                                );
+
+                                e.totalVotes++;
+                                voted[data.voter][_electionId] = true;
+                            }
+                        }
+                    }
+                }
                 unchecked {
                     ++i;
                 }
@@ -198,5 +210,6 @@ contract Voting {
         e_.merkleRoot = e.merkleRoot;
         e_.active = e.active;
         e_.totalVotes = e.totalVotes;
+        e_.candidateNames = e.candidateNames;
     }
 }

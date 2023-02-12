@@ -15,13 +15,16 @@ contract VotingTest is Helpers {
     }
 
     function testMerkleTreeVerifier() public {
+        string[] memory t = new string[](1);
+        t[0] = "tayo";
         //create election
         voting.createElection(
             getNo(),
             uint40(block.timestamp),
             1 days,
             "Futa Staff",
-            3
+            3,
+            t
         );
 
         address v = 0x18fc3C49ddb53542d98Ef8708294204579Ea4D08;
@@ -38,10 +41,13 @@ contract VotingTest is Helpers {
 
         voting.activateElection(0, root);
         Voting.VoteData memory vote = Voting.VoteData(sig, 1, v, voterHash, p);
-        Voting.VoteData[] memory votes = new Voting.VoteData[](1);
+        Voting.VoteData memory vote2 = Voting.VoteData(sig, 2, v, voterHash, p);
+        Voting.VoteData[] memory votes = new Voting.VoteData[](2);
         votes[0] = vote;
+        votes[1] = vote2;
         voting.submitVotes(votes, 0);
         voting.viewResults(0);
+        voting.viewElection(0);
     }
 }
 

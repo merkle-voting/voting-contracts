@@ -6,9 +6,8 @@ library LibSignature {
         bytes32 messageHash,
         bytes memory signature,
         address signer
-    ) internal pure {
-        if (recoverSigner(messageHash, signature) != signer)
-            revert("InvalidSignature");
+    ) internal pure returns (bool) {
+        return (recoverSigner(messageHash, signature) != signer);
     }
 
     function getEthSignedMessageHash(
