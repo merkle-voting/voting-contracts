@@ -67,7 +67,7 @@ contract Voting {
         bytes32 _voterHash,
         bytes32[] calldata _merkleProof,
         uint256 _electionId
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         //short-circuit election id
         bytes32 root = _assertElection(_electionId);
         //compute the leaf/node hash
@@ -147,32 +147,36 @@ contract Voting {
         if (_data.length > 0) {
             for (uint256 i = 0; i < _data.length; ) {
                 VoteData memory data = _data[i];
-
-                {
-                    Election storage e = elections[_electionId];
-                    //check sig
-                    bytes32 mHash = LibSignature.getMessageHash(
+                Election storage e = elections[_electionId];
+                //check sig
+                bytes32 mHash = LibSignature.getMessageHash(
+                    data.voter,
+                    _electionId,
+                    data.candidateId
+                );
+                if (
+                    _isVoter(
                         data.voter,
-                        _electionId,
-                        data.candidateId
-                    );
+                        data.voterHash,
+                        _data[i].proof,
+                        _electionId
+                    )
+                ) {
                     mHash = LibSignature.getEthSignedMessageHash(mHash);
                     if (
                         LibSignature.isValid(mHash, data.signature, data.voter)
                     ) {
-                        if (_data[i].candidateId <= e.maxCandidateNo - 1) {
-                            if (!_voted(data.voter, _electionId)) {
-                                //increase vote count for candidate
-                                e.votePerCandidate[data.candidateId]++;
-                                emit Voted(
-                                    data.voter,
-                                    _electionId,
-                                    data.candidateId
-                                );
+                        if (!_voted(data.voter, _electionId)) {
+                            //increase vote count for candidate
+                            e.votePerCandidate[data.candidateId]++;
+                            emit Voted(
+                                data.voter,
+                                _electionId,
+                                data.candidateId
+                            );
 
-                                e.totalVotes++;
-                                voted[data.voter][_electionId] = true;
-                            }
+                            e.totalVotes++;
+                            voted[data.voter][_electionId] = true;
                         }
                     }
                 }
